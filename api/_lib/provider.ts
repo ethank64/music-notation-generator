@@ -1,11 +1,12 @@
 // The notation-generation provider seam.
 //
 // Everything server-side talks to the model through NotationProvider, so the
-// underlying model is swappable without touching the HTTP handler. Today it's
-// OpenAI (or any OpenAI-compatible endpoint via OPENAI_BASE_URL); later it can
-// be a fine-tuned ABC model served behind the same interface.
+// underlying model is swappable without touching the HTTP handler. It uses the
+// Vercel AI SDK against Vercel AI Gateway, so the model is just a
+// "provider/model" string — switching vendors (OpenAI, Anthropic, Google, a
+// future fine-tuned model) is a one-line change with no code edits.
 
-import OpenAI from 'openai'
+import { generateText } from 'ai'
 import { SYSTEM_PROMPT, buildUserMessage, sanitizeAbc } from './prompt.js'
 
 export interface NotationProvider {
@@ -22,35 +23,34 @@ export class ProviderError extends Error {
   }
 }
 
-class OpenAIProvider implements NotationProvider {
-  private client: OpenAI
+// Default model routed through AI Gateway. Override with NOTATION_MODEL, e.g.
+// "anthropic/claude-sonnet-4.6", "google/gemini-2.5-flash", or eventually your
+// own fine-tuned ABC model registered with the gateway.
+const DEFAULT_MODEL = 'openai/gpt-4o-mini'
+
+class GatewayProvider implements NotationProvider {
   private model: string
 
-  constructor(opts: { apiKey: string; baseURL?: string; model: string }) {
-    this.client = new OpenAI({
-      apiKey: opts.apiKey,
-      // When set, points at any OpenAI-compatible server (vLLM, TGI, Together,
-      // a self-hosted fine-tuned model). When unset, the SDK uses OpenAI.
-      baseURL: opts.baseURL || undefined,
-    })
-    this.model = opts.model
+  constructor(model: string) {
+    this.model = model
   }
 
   async generate(prompt: string): Promise<{ abc: string; source: string }> {
-    let completion
+    let raw: string
     try {
-      completion = await this.client.chat.completions.create({
+      // The AI SDK reads credentials automatically: AI_GATEWAY_API_KEY locally,
+      // or the Vercel OIDC token when deployed on Vercel (no key needed).
+      const result = await generateText({
         model: this.model,
         temperature: 0.8,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: buildUserMessage(prompt) },
-        ],
+        system: SYSTEM_PROMPT,
+        prompt: buildUserMessage(prompt),
       })
+      raw = result.text
     } catch (err) {
       const status =
-        err && typeof err === 'object' && 'status' in err
-          ? Number((err as { status: unknown }).status) || 502
+        err && typeof err === 'object' && 'statusCode' in err
+          ? Number((err as { statusCode: unknown }).statusCode) || 502
           : 502
       throw new ProviderError(
         'The notation model could not be reached. Please try again.',
@@ -58,7 +58,6 @@ class OpenAIProvider implements NotationProvider {
       )
     }
 
-    const raw = completion.choices[0]?.message?.content ?? ''
     const abc = sanitizeAbc(raw)
     if (!abc || !/^X:\s*\d/m.test(abc)) {
       throw new ProviderError(
@@ -67,23 +66,20 @@ class OpenAIProvider implements NotationProvider {
       )
     }
 
-    return { abc, source: `openai:${this.model}` }
+    return { abc, source: `gateway:${this.model}` }
   }
 }
 
-// Build the provider from environment configuration. Throws a clear error if
-// the API key is missing so the handler can return a sensible message.
+// Build the provider from environment configuration. On Vercel the gateway is
+// authenticated via OIDC automatically; locally it needs AI_GATEWAY_API_KEY.
 export function createProvider(): NotationProvider {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) {
+  const hasCredential =
+    !!process.env.AI_GATEWAY_API_KEY || !!process.env.VERCEL_OIDC_TOKEN
+  if (!hasCredential) {
     throw new ProviderError(
-      'Server is not configured: OPENAI_API_KEY is missing.',
+      'Server is not configured: set AI_GATEWAY_API_KEY (or deploy on Vercel for OIDC auth).',
       500,
     )
   }
-  return new OpenAIProvider({
-    apiKey,
-    baseURL: process.env.OPENAI_BASE_URL,
-    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-  })
+  return new GatewayProvider(process.env.NOTATION_MODEL || DEFAULT_MODEL)
 }

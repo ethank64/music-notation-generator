@@ -37,7 +37,7 @@ emit ABC, which this frontend already renders, edits, and plays.
 | Notation render + edit + playback | abcjs (MIT) |
 | Styling | Plain CSS |
 | Backend | TypeScript serverless functions (Vercel) |
-| LLM | OpenAI (or any OpenAI-compatible endpoint) |
+| LLM | Vercel AI SDK → AI Gateway (any provider via `provider/model`) |
 | Notation source | Mock (`src/api/mockApi.ts`) or live (`/api/generate`) |
 
 ## Getting started
@@ -55,7 +55,7 @@ npm run preview  # preview the production build
 api/                      # serverless backend (Node/TypeScript, Vercel)
   generate.ts             # POST /api/generate — LLM proxy, holds the API key
   _lib/
-    provider.ts           # NotationProvider seam (OpenAI today, your model later)
+    provider.ts           # NotationProvider seam (AI Gateway; any provider/model)
     prompt.ts             # system prompt + ABC sanitizer
 src/
   api/
@@ -74,9 +74,9 @@ src/
 
 ## Backend / LLM proxy
 
-The OpenAI key **cannot** live in the browser, so generation runs through a
-serverless function. The browser calls `/api/generate`; that function holds the
-key server-side and talks to the model.
+API credentials **cannot** live in the browser, so generation runs through a
+serverless function. The browser calls `/api/generate`; that function talks to
+the model server-side.
 
 The model sits behind a single interface so it's swappable without touching the
 HTTP layer or the UI:
@@ -88,10 +88,16 @@ export interface NotationProvider {
 }
 ```
 
-It uses OpenAI's Chat Completions API with a **configurable base URL**, so the
-exact same code targets OpenAI now and any OpenAI-compatible endpoint later
-(vLLM, TGI, Together, a self-hosted fine-tuned model) — just by changing env
-vars. That's the path from "OpenAI for now" to "my own ABC model."
+It uses the **Vercel AI SDK** routed through **[AI Gateway](https://vercel.com/docs/ai-gateway)**,
+so the model is just a `provider/model` string. Switching vendors — OpenAI,
+Anthropic, Google, xAI, or eventually your own fine-tuned ABC model — is a
+one-line change (the `NOTATION_MODEL` env var) with no code edits, no per-vendor
+SDKs, and one unified bill. That's the path from "a hosted model for now" to "my
+own ABC model."
+
+Auth is nearly free on Vercel: deployed functions authenticate to the gateway
+via **OIDC automatically**, so no key needs to be set in production. Locally you
+provide an `AI_GATEWAY_API_KEY`.
 
 ### Configuration
 
@@ -99,9 +105,8 @@ Copy `.env.example` to `.env` and fill in:
 
 | Var | Required | Purpose |
 | --- | --- | --- |
-| `OPENAI_API_KEY` | yes (live) | Server-side key. Never exposed to the browser. |
-| `OPENAI_MODEL` | no | Defaults to `gpt-4o-mini`. |
-| `OPENAI_BASE_URL` | no | Point at any OpenAI-compatible endpoint. |
+| `AI_GATEWAY_API_KEY` | local only | Gateway key (`vck_…`). On Vercel, OIDC is used automatically. |
+| `NOTATION_MODEL` | no | `provider/model`. Defaults to `openai/gpt-4o-mini`. |
 | `VITE_USE_MOCK` | no | `false` → call the live backend. Defaults to mock. |
 
 ### Running the backend locally
@@ -114,12 +119,13 @@ npm i -g vercel
 vercel dev            # serves frontend + /api together
 ```
 
-…with `VITE_USE_MOCK=false` and `OPENAI_API_KEY` set in your `.env`.
+…with `VITE_USE_MOCK=false` and `AI_GATEWAY_API_KEY` set in your `.env`.
 
 ## Roadmap
 
 - [x] Serverless LLM proxy behind a swappable provider interface
-- [ ] Fine-tuned text→ABC model (swap in via `OPENAI_BASE_URL`)
+- [x] Multi-vendor model routing via Vercel AI Gateway
+- [ ] Fine-tuned text→ABC model (swap in via `NOTATION_MODEL`)
 - [ ] MusicXML export (via `abc2xml` — deferred; no good pure-JS converter)
 - [ ] Multiple voices / instruments
 - [ ] Save & share scores
