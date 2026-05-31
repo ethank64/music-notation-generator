@@ -1,0 +1,255 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  text-align: left;
+}
+
+/* ---- Header ---- */
+.app__header {
+  padding: 28px 32px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.app__title {
+  font-size: 34px;
+  margin: 0 0 6px;
+  letter-spacing: -0.8px;
+}
+.app__subtitle {
+  color: var(--text);
+  font-size: 15px;
+  max-width: 60ch;
+}
+
+/* ---- Layout ---- */
+.app__main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  min-height: 0;
+}
+.app__sidebar {
+  border-right: 1px solid var(--border);
+  padding: 24px;
+}
+.app__workspace {
+  padding: 20px 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+@media (max-width: 860px) {
+  .app__main {
+    grid-template-columns: 1fr;
+  }
+  .app__sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+/* ---- Prompt panel ---- */
+.prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.prompt__label {
+  font-weight: 600;
+  color: var(--text-h);
+  font-size: 15px;
+}
+.prompt__input,
+.editor__textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-h);
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  resize: vertical;
+}
+.prompt__input:focus,
+.editor__textarea:focus {
+  outline: 2px solid var(--accent-border);
+  outline-offset: -1px;
+}
+.prompt__examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.prompt__chip {
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--social-bg);
+  color: var(--text);
+  cursor: pointer;
+}
+.prompt__chip:hover:not(:disabled) {
+  border-color: var(--accent-border);
+  color: var(--text-h);
+}
+.prompt__generate {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 11px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.prompt__generate:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.prompt__kbd {
+  font-size: 12px;
+  color: var(--text);
+  align-self: center;
+}
+.prompt__error {
+  color: #d23b3b;
+  font-size: 14px;
+  background: rgba(210, 59, 59, 0.08);
+  border: 1px solid rgba(210, 59, 59, 0.3);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+/* ---- Toolbar ---- */
+.toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.toolbar__btn {
+  font-size: 13px;
+  padding: 7px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+.toolbar__btn:hover:not(:disabled) {
+  border-color: var(--accent-border);
+}
+.toolbar__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.toolbar__btn--ghost {
+  margin-left: auto;
+  color: var(--text);
+}
+
+/* ---- Score ---- */
+.app__score-pane {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  min-height: 220px;
+  overflow-x: auto;
+}
+.score-view {
+  color: #000;
+}
+/* abcjs note highlight during playback */
+.abcjs-note-playing {
+  fill: var(--accent) !important;
+}
+
+.app__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 196px;
+  color: var(--text);
+  text-align: center;
+}
+.app__empty-hint {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+/* ---- Playback ---- */
+.playback {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.playback__transport {
+  flex: 1;
+  min-width: 260px;
+}
+.playback__hint {
+  font-size: 13px;
+  color: var(--text);
+}
+.playback__hint--error {
+  color: #d23b3b;
+}
+.playback--unsupported {
+  font-size: 14px;
+  color: var(--text);
+}
+
+/* ---- Editor ---- */
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.editor__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+.editor__warn {
+  font-size: 12px;
+  color: #c98a00;
+}
+.editor__textarea {
+  min-height: 140px;
+}
+.editor__error {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: #c98a00;
+  background: rgba(201, 138, 0, 0.08);
+  border: 1px solid rgba(201, 138, 0, 0.3);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* ---- Footer ---- */
+.app__footer {
+  padding: 16px 32px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text);
+}
+.app__footer a {
+  color: var(--accent);
+}
