@@ -6,7 +6,7 @@
 // be a fine-tuned ABC model served behind the same interface.
 
 import OpenAI from 'openai'
-import { SYSTEM_PROMPT, buildUserMessage, sanitizeAbc } from './prompt'
+import { SYSTEM_PROMPT, buildUserMessage, sanitizeAbc } from './prompt.js'
 
 export interface NotationProvider {
   /** Generate ABC notation for a free-text prompt. */

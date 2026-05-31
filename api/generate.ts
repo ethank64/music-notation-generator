@@ -5,7 +5,7 @@
 // to the model through the NotationProvider seam.
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { createProvider, ProviderError } from './_lib/provider'
+import { createProvider, ProviderError } from './_lib/provider.js'
 
 export default async function handler(
   req: VercelRequest,
