@@ -125,6 +125,7 @@ vercel dev            # serves frontend + /api together
 
 - [x] Serverless LLM proxy behind a swappable provider interface
 - [x] Multi-vendor model routing via Vercel AI Gateway
+- [x] GitHub auto-deploy via Vercel Git integration
 - [ ] Fine-tuned text→ABC model (swap in via `NOTATION_MODEL`)
 - [ ] MusicXML export (via `abc2xml` — deferred; no good pure-JS converter)
 - [ ] Multiple voices / instruments
