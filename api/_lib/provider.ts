@@ -38,8 +38,9 @@ class GatewayProvider implements NotationProvider {
   async generate(prompt: string): Promise<{ abc: string; source: string }> {
     let raw: string
     try {
-      // The AI SDK reads credentials automatically: AI_GATEWAY_API_KEY locally,
-      // or the Vercel OIDC token when deployed on Vercel (no key needed).
+      // The AI SDK reads credentials automatically: AI_GATEWAY_API_KEY from the
+      // environment, or the Vercel OIDC token (delivered as a request header)
+      // when deployed on Vercel — no key needed in production.
       const result = await generateText({
         model: this.model,
         temperature: 0.8,
@@ -52,6 +53,14 @@ class GatewayProvider implements NotationProvider {
         err && typeof err === 'object' && 'statusCode' in err
           ? Number((err as { statusCode: unknown }).statusCode) || 502
           : 502
+
+      // Auth failures get an actionable message; everything else is transient.
+      if (status === 401 || status === 403) {
+        throw new ProviderError(
+          'The notation service is not authenticated. Set AI_GATEWAY_API_KEY, or enable OIDC for this Vercel project.',
+          500,
+        )
+      }
       throw new ProviderError(
         'The notation model could not be reached. Please try again.',
         status,
@@ -70,16 +79,11 @@ class GatewayProvider implements NotationProvider {
   }
 }
 
-// Build the provider from environment configuration. On Vercel the gateway is
-// authenticated via OIDC automatically; locally it needs AI_GATEWAY_API_KEY.
+// Build the provider. We intentionally do NOT pre-check credentials here: the
+// AI SDK resolves auth at call time from AI_GATEWAY_API_KEY (env) or the Vercel
+// OIDC token (delivered as a request header in production, not as an env var),
+// so an env-var guard would wrongly reject valid OIDC requests. A real auth
+// failure surfaces as a 401/403 from generate() with an actionable message.
 export function createProvider(): NotationProvider {
-  const hasCredential =
-    !!process.env.AI_GATEWAY_API_KEY || !!process.env.VERCEL_OIDC_TOKEN
-  if (!hasCredential) {
-    throw new ProviderError(
-      'Server is not configured: set AI_GATEWAY_API_KEY (or deploy on Vercel for OIDC auth).',
-      500,
-    )
-  }
   return new GatewayProvider(process.env.NOTATION_MODEL || DEFAULT_MODEL)
 }
