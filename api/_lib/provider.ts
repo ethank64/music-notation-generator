@@ -49,12 +49,29 @@ class GatewayProvider implements NotationProvider {
       })
       raw = result.text
     } catch (err) {
+      // Log the real cause to runtime logs (not exposed to the client).
+      console.error('Gateway generateText failed:', {
+        name: (err as Error)?.name,
+        message: (err as Error)?.message,
+        statusCode: (err as { statusCode?: unknown })?.statusCode,
+        cause: (err as { cause?: unknown })?.cause,
+      })
+
       const status =
         err && typeof err === 'object' && 'statusCode' in err
           ? Number((err as { statusCode: unknown }).statusCode) || 502
           : 502
+      const detail = (err as Error)?.message ?? ''
 
-      // Auth failures get an actionable message; everything else is transient.
+      // The gateway returns 403 for two very different reasons: a billing gate
+      // (no card on file) vs. genuine auth failure. Distinguish them so the
+      // surfaced message is actionable.
+      if (/credit card|customer_verification/i.test(detail)) {
+        throw new ProviderError(
+          'The notation service needs billing enabled: add a payment method to AI Gateway in the Vercel dashboard to unlock free credits.',
+          402,
+        )
+      }
       if (status === 401 || status === 403) {
         throw new ProviderError(
           'The notation service is not authenticated. Set AI_GATEWAY_API_KEY, or enable OIDC for this Vercel project.',
